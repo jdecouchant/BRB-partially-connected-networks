@@ -1,0 +1,414 @@
+#include "Peer.h"
+#include "base.h"
+#include "packets_m.h"
+
+#include "inet/common/ModuleAccess.h"
+#include "inet/common/packet/chunk/ByteCountChunk.h"
+#include "inet/networklayer/common/L3AddressResolver.h"
+#include "inet/transportlayer/contract/udp/UdpControlInfo_m.h"
+
+#include <math.h> // ceil
+#include <string>
+#include <map>
+
+#include <bits/stdc++.h>
+
+#include <stdio.h>
+#include <python3.6/Python.h>
+#include <iostream>
+#include <fstream>
+
+using namespace std;
+
+
+namespace inet {
+#ifdef V2
+
+//#ifdef V2 // Version 1 with acks of pi, pj
+//        //        pathGraph = (bool ***) new bool*[nodesNbr+1]; // Depth
+//        //        for (int d = 0; d < nodesNbr+1; d++) {
+//        //            pathGraph[d] = new bool*[nodesNbr];
+//        //            for (int i = 0; i < nodesNbr; i++) {
+//        //                pathGraph[d][i] = new bool[nodesNbr];
+//        //                for (int j = 0; j < nodesNbr; j++) {
+//        //                    pathGraph[d][i][j] = false;
+//        //                }
+//        ////                if (d>0) {
+//        ////                    pathGraph[d][i][i] = true;
+//        ////                }
+//        //            }
+//        //        }
+//
+//#endif
+void Peer::V2initialize() {
+    sentAck = new bool[nodesNbr];
+    for (int i = 0; i < nodesNbr; i++) {
+        sentAck[i] = false;
+    }
+    hasHeardFrom = new bool*[nodesNbr];
+    for (int i = 0; i < nodesNbr; i++) {
+        hasHeardFrom[i] = new bool[nodesNbr];
+        for (int j = 0; j < nodesNbr; j++) {
+            hasHeardFrom[i][j] = false;
+        }
+    }
+}
+
+void Peer::V2finish() {
+    delete[] sentAck;
+    for (int i = 0; i < nodesNbr; i++) {
+        delete [] hasHeardFrom[i];
+    }
+    delete[] hasHeardFrom;
+}
+
+BriefPacket * Peer::V2firstMessage() {
+    BriefPacket * bp = new BriefPacket();
+    bp->setSenderId(selfId);
+    bp->setBroadcasterId(selfId);
+    bp->setMsgId(msgId);
+    bp->setMsgType(ECHO);
+    bp->setPathArraySize(0);
+    sentEcho = true;
+    rcvECHOv0.insert(selfId);
+    dolevDelivered[make_pair(ECHO, selfId)] = true;
+
+    bp->setAckedId(selfId);
+    sentAck[selfId] = true;
+    hasHeardFrom[selfId][selfId] = true;
+
+    return bp;
+}
+
+void Peer::printGraphV2(int ackedId, int broadcasterId) {
+    ofstream gfile;
+    string gfname;
+    gfname = "/home/jeremie/sim/BroadcastSign/simulations/graph_"+to_string(ackedId)+"_"+to_string(broadcasterId)+"_"+to_string(selfId)+".txt";
+    gfile.open(gfname);
+    gfile << nodesNbr << endl << endl;
+    for (int d = 0; d < nodesNbr; d++) {
+        for (int i = 0; i < nodesNbr; i++) {
+            for (int j = 0; j < nodesNbr; j++) {
+                gfile << ((mapPathGraph[make_pair(ackedId, broadcasterId)][d][i][j])?1:0) << " ";
+            }
+            gfile << endl;
+        }
+        gfile << endl;
+    }
+    gfile.close();
+}
+
+void Peer::V2initMapPathGraph(int ackedId, int broadcasterId) {
+    if (mapPathGraph.find(make_pair(ackedId, broadcasterId)) == mapPathGraph.end()) {
+        bool ***pathGraph = (bool ***) new bool*[nodesNbr]; // Depth
+        for (int d = 0; d < nodesNbr; d++) {
+            pathGraph[d] = new bool*[nodesNbr];
+            for (int i = 0; i < nodesNbr; i++) {
+                pathGraph[d][i] = new bool[nodesNbr];
+                for (int j = 0; j < nodesNbr; j++) {
+                    pathGraph[d][i][j] = false;
+                }
+            }
+        }
+        mapPathGraph[make_pair(ackedId, broadcasterId)] = pathGraph;
+    }
+}
+
+bool Peer::V2canDeliver() {
+    int countReady = 0;
+    for (int i = 0; i < nodesNbr; i++) {
+        int countEchos = 0;
+        for (int j = 0; j < nodesNbr; j++) {
+            if (hasHeardFrom[i][j]) {
+                countEchos++;
+            }
+        }
+        if (countEchos >= quorumSize) {
+            countReady++;
+        }
+    }
+    //    cout << selfId << " has " << countReady << " readys" << endl;
+    if (countReady > 2*f) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void Peer::V2receiveMessage(BriefPacket *x) {
+    if (dolevDelivered.find(make_pair(x->getAckedId(), x->getBroadcasterId())) == dolevDelivered.end()) {
+        dolevDelivered[make_pair(x->getAckedId(), x->getBroadcasterId())] = false;
+    }
+    else if (dolevDelivered[make_pair(x->getAckedId(), x->getBroadcasterId())]) { // Optim 5, Bonomi
+        return;
+    }
+
+    if (gotEmptyPathSetFrom.find(make_pair(x->getAckedId(), x->getBroadcasterId())) == gotEmptyPathSetFrom.end()) {
+        gotEmptyPathSetFrom[make_pair(x->getAckedId(), x->getBroadcasterId())] = new bool[nodesNbr];
+        for (int i = 0; i < nodesNbr; i++) {
+            gotEmptyPathSetFrom[make_pair(x->getAckedId(), x->getBroadcasterId())][i] = false;
+        }
+    }
+    else {
+        for (int i = 0; i < x->getPathArraySize(); i++) {// Optim 4, Bonomi
+            if (gotEmptyPathSetFrom[make_pair(x->getAckedId(), x->getBroadcasterId())][x->getPath(i)]) {
+                return;
+            }
+        }
+    }
+
+    if (x->getPathArraySize() == 0) { // Optim 2, 3 Bonomi
+        gotEmptyPathSetFrom[make_pair(x->getAckedId(), x->getBroadcasterId())][x->getSenderId()] = true;
+    }
+
+    //    cout << "[BRACHADOLEV] " << selfId << " rcvd (" << ((x->getMsgType()==ECHO)?"ECHO":"READY") << ", " << x->getBroadcasterId() << ") from " << x->getSenderId() << endl;
+    bool containsSelf = (x->getSenderId() == selfId); // Should not happen
+    for (int i = 1; i < x->getPathArraySize(); i++) { // Important: otherwise the source never delivers
+        if (x->getPath(i) == selfId) {
+            containsSelf = true;
+            break;
+        }
+    }
+
+    vector<int> path;
+    for (int i = 0; i < x->getPathArraySize(); i++) {
+        path.push_back(x->getPath(i));
+    }
+    path.push_back(x->getSenderId());
+    path.push_back(selfId);
+
+    //    cout << selfId << " rcvd path ";
+    //    for (int x : path) {
+    //        cout << x << " ";
+    //    }
+    //    cout << endl;
+
+    //    if (x->getSenderId() != x->getBroadcasterId() && x->getPathArraySize()==0) { // Optim 2 Bonomi
+    //        path.insert(path.begin(), x->getBroadcasterId());
+    //    }
+
+    vector<int> npath;
+    npath.push_back(x->getAckedId());
+    npath.push_back(x->getBroadcasterId());
+    for (int i = 0; i < x->getPathArraySize(); i++) {
+        if (i != 0 || x->getPath(i) != x->getBroadcasterId()) {
+            npath.push_back(x->getPath(i));
+        }
+    }
+    if (x->getBroadcasterId() != x->getSenderId()) {
+        npath.push_back(x->getSenderId());
+    }
+    npath.push_back(selfId);
+
+    //    cout << selfId << " received path from " << x->getSenderId() << " {" << x->getAckedId()<<","<<x->getBroadcasterId()<< "} = [";
+    //    for (int i = 0; i < npath.size(); i++) {
+    //        cout << npath[i];
+    //        if (i != npath.size()-1) {cout << ",";};
+    //    }
+    //    cout << "]" << endl;
+
+    V2initMapPathGraph(x->getAckedId(), x->getBroadcasterId()); // If graph for (ackedId, broadcasterId) does not exist, create and initialize it
+
+    int depth = 0;
+    for (int i = 0; i < path.size()-1; i++) {
+        int start = path[i];
+        int next = path[i+1];
+        mapPathGraph[make_pair(x->getAckedId(), x->getBroadcasterId())][depth][start][next] = true;
+        //        pathGraph[depth][start][next] = true;
+        depth++;
+    }
+    while (depth < nodesNbr) {
+        mapPathGraph[make_pair(x->getAckedId(), x->getBroadcasterId())][depth][selfId][selfId] = true;
+        //        pathGraph[depth][selfId][selfId] = true;
+        depth++;
+    }
+
+    path.pop_back();
+
+    printGraphV2(x->getAckedId(), x->getBroadcasterId());
+
+    ofstream argfile;
+    argfile.open("/home/jeremie/sim/BroadcastSign/simulations/args.txt");
+    argfile << selfId << "\n";
+    argfile << f << "\n";
+    argfile << x->getBroadcasterId() << "\n"; // ?Changed?
+    argfile << x->getAckedId() << "\n";
+    argfile.close();
+
+    PyObject* pInt;
+    Py_Initialize();
+
+    FILE * PythonScriptFile = fopen("/home/jeremie/sim/BroadcastSign/simulations/disjointPaths.py", "r");
+    PyRun_SimpleFile(PythonScriptFile, "/home/jeremie/sim/BroadcastSign/simulations/disjointPaths.py");
+    fclose(PythonScriptFile);
+    //    PyRun_SimpleString("print('Hello World from Embedded Python!!!')");
+
+    //    Py_Finalize(); // Should be executed only once!
+
+    ifstream resfile ("/home/jeremie/sim/BroadcastSign/simulations/res.txt");
+    int res;
+    resfile >> res;
+    resfile.close();
+    //    cout << "\tThe result is " << res << endl;
+
+    if (res == 1) {
+//        cout << selfId << " validates and dolevDeliver (" << x->getAckedId() << "," << x->getBroadcasterId() <<")" << endl;
+        // TODO: reactivate
+        dolevDelivered[make_pair(x->getAckedId(), x->getBroadcasterId())] = true; // Optim 2 Bonomi
+        path.clear();
+    }
+
+
+    if (not containsSelf
+            && x->getAckedId() != x->getBroadcasterId()){
+            // Something here?
+        vector<int> diff;
+        if (!dolevDelivered[make_pair(x->getAckedId(), x->getBroadcasterId())]) {
+            set<int> pset;
+            for (int x : path) { // TODO: check in others they might have a problem too (had to change this loop)
+                pset.insert(x);
+            }
+            for (int j = 0; j < nodesNbr; j++) {
+                if (connections[selfId][j] == 1
+                        && !gotEmptyPathSetFrom[make_pair(x->getAckedId(), x->getBroadcasterId())][j]
+                                                                                                   && pset.find(j) == pset.end()) {
+                    diff.push_back(j);
+                }
+            }
+        } else {// Optim 2 (Bonomi)
+            for (int j = 0; j < nodesNbr; j++) {
+                if (connections[selfId][j] == 1
+                        && !gotEmptyPathSetFrom[make_pair(x->getAckedId(), x->getBroadcasterId())][j]) {
+                    diff.push_back(j);
+                }
+            }
+        }
+
+        if (diff.size() > 0) {
+            //            cout << selfId << " sends path ";
+            //            for (int x: path) {
+            //                cout << x << " ";
+            //            }
+            //            cout << endl;
+
+            BriefPacket * cp = new BriefPacket();
+            cp->setSenderId(selfId);
+            cp->setBroadcasterId(x->getBroadcasterId());
+            cp->setMsgId(x->getMsgId());
+            cp->setMsgType(x->getMsgType()); // changed
+            cp->setAckedId(x->getAckedId());
+            cp->setPathArraySize(path.size());
+            for (int i = 0; i < path.size(); i++) {
+                cp->setPath(i, path[i]);
+            }
+            sendTo(cp, diff);
+        }
+    }
+
+    for (int i = 0; i < npath.size(); i++) {
+        if (i+1 < npath.size()) {
+            int curAId = npath[i]; // acked id
+            int curBId = npath[i+1]; // broadcaster id
+            vector<int> pathToInsert;
+            pathToInsert.push_back(npath[i+1]);
+            //            cout << "(" << npath[i] << "," << npath[i+1] << ") : ";
+            //            cout << "[";
+            //            cout << npath[i+1];
+            for (int k = i+2; k < npath.size(); k++) {
+                //                cout << "," << npath[k];
+                pathToInsert.push_back(npath[k]);
+                //                if (k!=npath.size()-1) cout << ",";
+            }
+            //            if (i+2 >= npath.size()) {
+            //                pathToInsert.push_back(npath[i+1]);
+            ////                cout << "," << npath[i+1];
+            //            }
+            //            cout << "]";
+            //            cout << "(" << curAId << "," << curBId << ") : ";
+            //            cout << "[";
+            //            for (int l : pathToInsert) {
+            //                cout << l << ",";
+            //            }
+            //            cout << "]";
+            //            cout << endl;
+
+            V2initMapPathGraph(curAId, curBId);
+
+            int depth = 0;
+            for (int i = 0; i < pathToInsert.size()-1; i++) {
+                int start = pathToInsert[i];
+                int next = pathToInsert[i+1];
+                mapPathGraph[make_pair(curAId, curBId)][depth][start][next] = true;
+                //        pathGraph[depth][start][next] = true;
+                depth++;
+            }
+            while (depth < nodesNbr) {
+                mapPathGraph[make_pair(curAId, curBId)][depth][selfId][selfId] = true;
+                //        pathGraph[depth][selfId][selfId] = true;
+                depth++;
+            }
+
+            printGraphV2(curAId, curBId);
+
+            ofstream argfile;
+            argfile.open("/home/jeremie/sim/BroadcastSign/simulations/args.txt");
+            argfile << selfId << "\n";
+            argfile << f << "\n";
+            argfile << curBId << "\n";
+            argfile << curAId << "\n";
+            argfile.close();
+
+            PyObject* pInt;
+            Py_Initialize();
+
+            FILE * PythonScriptFile = fopen("/home/jeremie/sim/BroadcastSign/simulations/disjointPaths.py", "r");
+            PyRun_SimpleFile(PythonScriptFile, "/home/jeremie/sim/BroadcastSign/simulations/disjointPaths.py");
+            fclose(PythonScriptFile);
+            //    PyRun_SimpleString("print('Hello World from Embedded Python!!!')");
+
+            //    Py_Finalize(); // Should be executed only once!
+
+            ifstream resfile ("/home/jeremie/sim/BroadcastSign/simulations/res.txt");
+            int res;
+            resfile >> res;
+            resfile.close();
+            if (res == 1) {
+                //                cout << selfId << " validates (" << curAId << "," << curBId << ")" << endl;
+                hasHeardFrom[selfId][curBId] = true;
+                hasHeardFrom[curBId][curAId] = true;
+                hasHeardFrom[curBId][curBId] = true;
+                if (curBId != selfId && nSentAck < quorumSize && !sentAck[curBId]) {
+                    // TODO: send new message to ack curAId, curBId
+                    BriefPacket * cp = new BriefPacket();
+                    cp->setSenderId(selfId);
+                    cp->setBroadcasterId(selfId);
+                    cp->setMsgId(x->getMsgId());
+                    cp->setMsgType(ACK);
+                    cp->setAckedId(curBId);
+                    cp->setPathArraySize(0);
+                    vector<int> neighbors;
+                    for (int j = 0; j < nodesNbr; j++) {
+                        if (connections[selfId][j] == 1) {
+                            neighbors.push_back(j);
+                        }
+                    }
+                    sendTo(cp, neighbors);
+                    sentAck[curBId] = true;
+                    nSentAck++;
+                }
+                if (V2canDeliver()) {
+                    if (!delivered) {
+                        delivered = true;
+                        deliverCount++;
+                        deliverTime.push_back(simTime().dbl() * 1000- roundDuration*1000);
+                        cout << deliverCount << ": " << selfId << " [V2] DELIVERS after " << simTime().dbl() * 1000 - roundDuration*1000 << "ms" <<  endl;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+#endif
+}
