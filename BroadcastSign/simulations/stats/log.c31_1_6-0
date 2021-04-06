@@ -1,1 +1,0 @@
-../BRB -r 0 -m -u Cmdenv -c c31_1_6-0 -n ../src:.:../../../../../sim/inet4/src:../../../../../sim/inet4/examples:../../../../../sim/inet4/tutorials:../../../../../sim/inet4/showcases --image-path=../../../../../sim/inet4/images -l ../../../../../sim/inet4/src/INET random_31_1_6.ini > /dev/null

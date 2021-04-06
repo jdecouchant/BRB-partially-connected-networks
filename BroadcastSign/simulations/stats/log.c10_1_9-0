@@ -1,1 +1,0 @@
-../BroadcastSign -m -u Cmdenv -c c10_1_9-0 -n ../src:.:../../inet4/src:../../inet4/examples:../../inet4/tutorials:../../inet4/showcases --image-path=../../inet4/images -l ../../inet4/src/INET random_10_1_9.ini >> ./stats/log.c10_1_9-0
