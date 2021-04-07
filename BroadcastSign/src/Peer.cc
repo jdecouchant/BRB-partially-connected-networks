@@ -537,7 +537,8 @@ void Peer::sendTo(BriefPacket * bp, vector<int> ids) {
         if (delay) {
 //            cout << "Delay msg sending by " << p << " micros" << endl;
 //            //        cout << "scale = " << SimTime::getScale() << endl;
-            auto p = std::chrono::duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - timeMsgReception).count();
+            std::chrono::time_point<std::chrono::high_resolution_clock> now = high_resolution_clock::now();
+            auto p = std::chrono::duration_cast<std::chrono::microseconds>(now - timeMsgReception).count();
 //            cout << "processing delay = " << p << endl;
             SimTime processingDelay = SimTime(p, SIMTIME_US);
 //            cout << "ASYNC value " << ASYNC << endl;
@@ -581,7 +582,7 @@ void Peer::sendTo(BriefPacket * bp, vector<int> ids) {
 
 void Peer::receiveECHO_or_READY(BriefPacket *x) {
 
-    timeMsgReception = high_resolution_clock::now();
+    timeMsgReception = std::chrono::high_resolution_clock::now();
     auto start = high_resolution_clock::now();
     rcvMsgFrom[x->getLinkSenderId()] = true;
 #ifdef BRACHA // Works only on a fully connected network

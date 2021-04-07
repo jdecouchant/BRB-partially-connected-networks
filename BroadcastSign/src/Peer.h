@@ -91,7 +91,7 @@ protected:
     int debugId = 0;
 
     bool delay = true;
-    std::chrono::_V2::system_clock::time_point timeMsgReception; // Set when a message is received
+    std::chrono::time_point<std::chrono::high_resolution_clock> timeMsgReception; // Set when a message is received
     std::default_random_engine generator;
     std::normal_distribution<double> **distribution; //(5.0,2.0);
 
@@ -116,7 +116,7 @@ private:
 
 public:
     Peer() { }
-    virtual ~Peer() { cancelAndDelete(roundEvent); }
+    virtual ~Peer() { } //cancelAndDelete(this->roundEvent); }
 
 protected:
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
