@@ -29,8 +29,8 @@ class Peer : public ApplicationBase, public UdpSocket::ICallback {
 public:
     static map<L3Address, int> addrToId;
 
-    cMessage **processLinkTimers; // An array of timers, one per possible destination (instantiated only for the neighbors)
-    vector< pair<Packet *, SimTime> > *pendingMsgsPerNeighbors;
+    cMessage **processLinkTimers = nullptr; // An array of timers, one per possible destination (instantiated only for the neighbors)
+    vector< pair<Packet *, SimTime> > *pendingMsgsPerNeighbors = nullptr;
 
     static vector<SimTime> deliverTime;
     static int deliverCount;
@@ -56,7 +56,7 @@ protected:
 
     // state
     UdpSocket socket;
-    cMessage *roundEvent;
+    cMessage *roundEvent = nullptr;
     int localPort = -1;
 
     int nodesNbr;
@@ -71,7 +71,7 @@ protected:
 
     int quorumSize;
 
-    omnetpp::cTopology *topo;
+    omnetpp::cTopology *topo = nullptr;
 
     // Common
     bool delivered = false;
@@ -87,7 +87,7 @@ protected:
     bool delay = true;
     std::chrono::time_point<std::chrono::high_resolution_clock> timeMsgReception; // Set when a message is received
     std::default_random_engine generator;
-    std::normal_distribution<double> **distribution; //(5.0,2.0);
+    std::normal_distribution<double> **distribution = nullptr; //(5.0,2.0);
 
 private:
 
@@ -110,7 +110,7 @@ private:
 
 public:
     Peer() { }
-    virtual ~Peer() { }//cancelAndDelete(this->roundEvent); }
+    virtual ~Peer() { ApplicationBase::cancelAndDelete(roundEvent); }
 
 protected:
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
