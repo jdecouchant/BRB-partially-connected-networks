@@ -1,5 +1,5 @@
-#ifndef __INET_MYUDPVIDEOSTREAMCLI_H
-#define __INET_MYUDPVIDEOSTREAMCLI_H
+#ifndef __INET_MYPEERCLI_H
+#define __INET_MYPEERCLI_H
 
 #include "inet/common/INETDefs.h"
 
@@ -24,12 +24,6 @@ using namespace std::chrono;
 
 namespace inet {
 
-/**
- * A "Realtime" VideoStream client application.
- *
- * Basic video stream application. Clients connect to server and get a stream of
- * video back.
- */
 class Peer : public ApplicationBase, public UdpSocket::ICallback {
 
 public:
@@ -116,7 +110,7 @@ private:
 
 public:
     Peer() { }
-    virtual ~Peer() { } //cancelAndDelete(this->roundEvent); }
+    virtual ~Peer() { }//cancelAndDelete(this->roundEvent); }
 
 protected:
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
@@ -198,7 +192,7 @@ protected:
     virtual bool BRACHADOLEVreceiveMessage(BriefPacket *x); // true if message discarded
 #endif
 
-#ifdef BRACHACPA // Direct combination between Bracha and Dolev's algorithm
+#ifdef BRACHACPA // Direct combination between Bracha and CPA's algorithm
 protected:
     bool sentEcho = false;
     bool sentReady = false;
@@ -344,5 +338,5 @@ protected:
 
 } // namespace inet
 
-#endif // ifndef __INET_UDPVIDEOSTREAMCLI_H
+#endif
 

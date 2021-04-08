@@ -680,7 +680,7 @@ void Peer::BRACHADOLEV2receiveMessage_ECHO(BriefPacket *x) {
         }
     }
     if (!sentEcho && isInEcho) {
-        if (OPTIM_BRACHA_OVERPROVISIONING && selfId > quorumSize + f - 1
+        if ( ((OPTIM_BRACHA_OVERPROVISIONING && selfId) > (quorumSize + f - 1))
                 || (OPTIM_SENDTOECHO && x->getEchoOrReadySender() == x->getBroadcasterId() && x->getLinkSenderId() == x->getBroadcasterId())) {
             doCreateECHO_ECHO = false;
         } else {

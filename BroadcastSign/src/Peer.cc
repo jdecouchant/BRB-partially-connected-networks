@@ -653,7 +653,6 @@ void Peer::handleStartOperation(LifecycleOperation *operation) {
 
     outputPrefix = par("outputPrefixPar").stringValue();
 
-    //    cout << "Read byzstring = " << byzString << endl;
     int i = 0;
     stringstream ssin(byzString);
     while (ssin.good() && i < f) {
