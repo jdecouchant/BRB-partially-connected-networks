@@ -14,7 +14,6 @@
 #include <bits/stdc++.h>
 
 #include <stdio.h>
-//#include <python3.6/Python.h>
 #include <iostream>
 #include <fstream>
 

@@ -297,13 +297,10 @@ void Peer::handleMessageWhenUp(cMessage *msg) {
             }
             roundId++;
 
-        } else {
-            //            cout << selfId << " received channel timer message" << endl;
-            //            cout << "\t" << destId << endl;
+        } else { // Event that signals that a message is ready to be sent on a channel
             int destId;
             std::istringstream iss (msg->getName());
             iss >> destId;
-
 
             //            sort(pendingMsgsPerNeighbors[destId].begin(), pendingMsgsPerNeighbors[destId].end(), sortbysec);
             Packet *pk = pendingMsgsPerNeighbors[destId].front().first;
@@ -317,7 +314,7 @@ void Peer::handleMessageWhenUp(cMessage *msg) {
             socket.sendTo(pk, nodesAddr[destId], 9999);
         }
 
-    } else {
+    } else { // Message received from a neighbor
         socket.processMessage(msg); // and then call socketDataArrived
     }
 }
@@ -353,6 +350,77 @@ void Peer::receiveStream(Packet *pk) {
 void Peer::deleteBriefPacket(BriefPacket *bp) {
     bp->~BriefPacket();
     delete bp;
+}
+
+void Peer::sendTo_BRACHA(BriefPacket * bp, vector<int> ids) {
+    int count = 0;
+    for (int destId : ids) {
+        if (selfId == destId) continue;
+
+        count++;
+
+        numBitsSent += 8*B(bp->getChunkLength()).get();
+
+        Packet *briefPacket;
+        if (bp->getMsgType() == ECHO) {
+            briefPacket = new Packet("ECHO");
+        } else if (bp->getMsgType() == READY) {
+            briefPacket = new Packet("READY");
+        }
+
+        BriefPacket &tmp = *bp;
+        const auto& payload = makeShared<BriefPacket>(tmp);
+        briefPacket->insertAtBack(payload);
+
+        SimTime emissionTime;
+        // TODO: add asynchronous delays for Bracha alone
+
+//        if (delay) {
+////            cout << "Delay msg sending by " << p << " micros" << endl;
+////            //        cout << "scale = " << SimTime::getScale() << endl;
+//            std::chrono::time_point<std::chrono::high_resolution_clock> now = high_resolution_clock::now();
+//            auto p = std::chrono::duration_cast<std::chrono::microseconds>(now - timeMsgReception).count();
+////            cout << "processing delay = " << p << endl;
+//            SimTime processingDelay = SimTime(p, SIMTIME_US);
+////            cout << "ASYNC value " << ASYNC << endl;
+//            if (ASYNC) {
+//                emissionTime = simTime() +  processingDelay + min(80.0, max(0.0, (*distribution[destId])(generator))); //rand() % 100; //accumulatedProcessing+
+//            } else {
+//                emissionTime = simTime() +  processingDelay;
+//            }
+////            cout << "before emission time = " << (emissionTime-processingDelay) << " to " << emissionTime << endl;
+//        } else {
+////            cout << "ASYNC value " << ASYNC << endl;
+//            if (ASYNC) {
+//                emissionTime = simTime() + min(80.0, max(0.0, (*distribution[destId])(generator)));
+//            } else {
+                emissionTime = simTime();
+//            }
+//        }
+        //SimTime emissionTime = simTime() + max(0.0, (*distribution[destId])(generator)); //rand() % 100;
+
+        vector<pair<Packet *, SimTime>>::iterator iter = pendingMsgsPerNeighbors[destId].begin();
+        while (iter != pendingMsgsPerNeighbors[destId].end() && iter->second < emissionTime) {
+            iter++;
+        }
+        pendingMsgsPerNeighbors[destId].insert(iter, make_pair(briefPacket, emissionTime));
+
+        //        pendingMsgsPerNeighbors[destId].push_back(make_pair(briefPacket, emissionTime));
+        //        sort(pendingMsgsPerNeighbors[destId].begin(), pendingMsgsPerNeighbors[destId].end(), sortbysec);
+        SimTime emissionFirst = pendingMsgsPerNeighbors[destId].front().second;
+
+        if (!processLinkTimers[destId]->isScheduled()) {
+            scheduleAt(emissionFirst, processLinkTimers[destId]);
+        } else {
+            cancelEvent(processLinkTimers[destId]);
+            scheduleAt(emissionFirst, processLinkTimers[destId]);
+        }
+        //        socket.sendTo(briefPacket, nodesAddr[destId], 9999);
+        numSentMsg++;
+
+    }
+    deleteBriefPacket(bp);
+
 }
 
 void Peer::sendTo(BriefPacket * bp, vector<int> ids) {

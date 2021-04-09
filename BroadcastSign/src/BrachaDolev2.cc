@@ -14,7 +14,6 @@
 #include <bits/stdc++.h>
 
 #include <stdio.h>
-//#include <python3.6/Python.h>
 #include <iostream>
 #include <fstream>
 
@@ -49,7 +48,6 @@ void Peer::BRACHADOLEV2finish() {
     if (selfId == nodesNbr-1) {
         SimTime avgDeliveryTime = 0;
         for (auto dtime : deliverTime) {
-//            cout << dtime << " ";
             avgDeliveryTime += dtime;
         }
         avgDeliveryTime /= nodesNbr;
@@ -138,25 +136,6 @@ BriefPacket * Peer::BRACHADOLEV2firstMessage() {
     rcvPayload = true;
     checkIfEmptyPathReceivedFromOneProcessInPath(make_pair(ECHO, selfId), emptyPath);
     return bp;
-}
-
-void Peer::printGraphBRACHADOLEV2(int msgType, int senderId) {
-    ofstream gfile;
-    string gfname;
-    gfname = outputPrefix +'_'+ to_string(msgType)+"_"+to_string(senderId)+"_"+to_string(selfId)+ ".graph";
-//    gfname = "/home/jeremie/sim/BroadcastSign/simulations/graph_"+to_string(msgType)+"_"+to_string(senderId)+"_"+to_string(selfId)+".txt";
-    gfile.open(gfname);
-    gfile << nodesNbr << endl << endl;
-    for (int d = 0; d < nodesNbr; d++) {
-        for (int i = 0; i < nodesNbr; i++) {
-            for (int j = 0; j < nodesNbr; j++) {
-                gfile << ((mapPathGraph[make_pair(msgType, senderId)][d][i][j])?1:0) << " ";
-            }
-            gfile << endl;
-        }
-        gfile << endl;
-    }
-    gfile.close();
 }
 
 vector<int> Peer::getAllNeighborsExceptDelivered() {
@@ -311,7 +290,6 @@ bool Peer::bfs(int V, int **rGraph, int s, int t, int * parent) {
 }
 
 bool Peer::fordFulkerson(int debug, int msgType, int s, int ot) {
-//    cout << "ff source = " << s << ", dest = " << ot << endl;
 
     // If message directly received from its original broadcaster
     if (s == ot || mapPathGraph[make_pair(msgType, s)][0][s][ot]) { // TODO: s == ot should not be necessary
@@ -320,7 +298,7 @@ bool Peer::fordFulkerson(int debug, int msgType, int s, int ot) {
 
     int V = (nodesNbr+1)*nodesNbr;
 
-    for (int i = 0; i < V; i++) { // TODO: should not be necessary
+    for (int i = 0; i < V; i++) {
         for (int j = 0; j < V; j++) {
             rgraph[i][j] = 0;
         }
@@ -329,23 +307,14 @@ bool Peer::fordFulkerson(int debug, int msgType, int s, int ot) {
     for (int d = 0; d < nodesNbr; d++) {
 
         int t = nodesNbr * d + ot;
-//        for (int i = 0; i < V; i++) {
-//            for (int j = 0; j < V; j++) {
-//                rgraph[i][j] = 0;
-//            }
-//        }
 
         // Copy graph into local matrix
         for (int d = 0; d < nodesNbr; d++) {
             for (int i = 0; i < nodesNbr; i++) {
                 for (int j = 0; j < nodesNbr; j++) {
                     rgraph[d*nodesNbr + i][(d+1)*nodesNbr + j] = ((mapPathGraph[make_pair(msgType, s)][d][i][j])?1:0);
-                    //                cout << d*nodesNbr+i << " " << (d+1)*nodesNbr+j << " " << rgraph[d*nodesNbr + i][(d+1)*nodesNbr + j] << " " << endl;
-//                    cout << rgraph[d*nodesNbr + i][(d+1)*nodesNbr + j] << " ";
                 }
-//                cout << endl;
             }
-//            cout << endl;
         }
 
         int parent[V];
@@ -354,7 +323,6 @@ bool Peer::fordFulkerson(int debug, int msgType, int s, int ot) {
         // Augment the flow while there is path from source to sink
         int iter = 0;
         while (bfs(V, rgraph, s, t, parent)) {
-//            cout << debug << ": loop " << iter++ << endl;
             // Find minimum residual capacity of the edges along the
             // path filled by BFS. Or we can say find the maximum flow
             // through the path found.
@@ -378,29 +346,17 @@ bool Peer::fordFulkerson(int debug, int msgType, int s, int ot) {
             max_flow += path_flow;
         }
 
-        //    cout << "free rgraph" << endl;
-
-//        cout << "max flow = " << max_flow << endl;
         // Return the overall flow
         if (max_flow >= f+1) {
-//            for (int i = 0; i < V; i++) {
-//                delete[] rgraph[i];
-//            }
-//            delete[] rgraph;
-//            cout << "f+1 paths between " << s << " and " << t << endl;
             return true;
         }
     }
 
-//    for (int i = 0; i < V; i++) {
-//        delete[] rgraph[i];
-//    }
-//    delete[] rgraph;
     return false;
 }
 
-bool Peer::fPlus1DisjointPaths(int source, int msgType) {
-    return true;
+//bool Peer::fPlus1DisjointPaths(int source, int msgType) {
+//    return true;
     //// Search for f+1 disjoint paths between the echoOrReadySender and the local process using a Python script
 //    ofstream argfile;
 ////    argfile.open("/home/jeremie/sim/BroadcastSign/simulations/args.txt");
@@ -431,7 +387,7 @@ bool Peer::fPlus1DisjointPaths(int source, int msgType) {
 //    resfile >> res;
 //    resfile.close();
 //    return (res == 1);
-}
+//}
 
 vector<int> Peer::getPathFromMessage(BriefPacket *x) {
 
@@ -584,15 +540,9 @@ void Peer::BRACHADOLEV2receiveMessage_ECHO(BriefPacket *x) {
                 }
             }
             if (studyMsg) {
-//                printGraphBRACHADOLEV2(ECHO, x->getBroadcasterId());
-//                sourceEchoIsValidated = fPlus1DisjointPaths(x->getBroadcasterId(), ECHO);
-//                cout << "bf verif 0" << endl;
                 sourceEchoIsValidated = fordFulkerson(0, ECHO, x->getBroadcasterId(), selfId);
-//                cout << "VERIFICATION 0 = " << sourceEchoIsValidated << ", " << newSourceEchoIsValidated << endl;
-//                sleep(2);
 
                 if (sourceEchoIsValidated) {
-//                    cout<<selfId<<" validates ECHO "<<x->getBroadcasterId()<<" ["<<simTime()<<"]"<<endl;
                     dolevDelivered[xId0] = true;
                     rcvECHO.insert(x->getBroadcasterId());
                     rcvECHO.insert(selfId);
@@ -623,15 +573,7 @@ void Peer::BRACHADOLEV2receiveMessage_ECHO(BriefPacket *x) {
         }
     }
 
-//    printGraphBRACHADOLEV2(ECHO, echoSender);     // Write the graph to file
-//    bool msgIsValidated = fPlus1DisjointPaths(echoSender, ECHO); //(x->getEchoOrReadySender(), x->getMsgType());
-
-//    cout << "bf verif 1" << endl;
     bool msgIsValidated = fordFulkerson(1, ECHO, echoSender, selfId);
-//    if (msgIsValidated != newSourceEchoIsValidated) {
-//        cout << "VERIFICATION 1 = " << msgIsValidated << ", " << newSourceEchoIsValidated << endl;
-//        sleep(2);
-//    }
 
     bool doCreateREADY_ECHO = false;
     bool doCreateECHO_ECHO = false;
@@ -809,8 +751,6 @@ void Peer::BRACHADOLEV2receiveMessage_READY(BriefPacket *x) {
     path.erase(path.begin());
     path.pop_back(); // remove selfId from path
 
-//    printGraphBRACHADOLEV2(READY, readySender);     // Write the graph to file
-//    bool msgIsValidated = fPlus1DisjointPaths(readySender, READY); //x->getEchoOrReadySender(), x->getMsgType());
     bool msgIsValidated = fordFulkerson(2, READY, readySender, selfId);
 
     if (msgIsValidated) { // Received message has just been Dolev-delivered
@@ -930,8 +870,7 @@ void Peer::BRACHADOLEV2receiveMessage_ECHO_ECHO(BriefPacket *x) {
                 }
             }
             if (studyMsg) {
-//                printGraphBRACHADOLEV2(ECHO, x->getBroadcasterId());
-//                sourceEchoIsValidated = fPlus1DisjointPaths(x->getBroadcasterId(), ECHO);
+
                 sourceEchoIsValidated = fordFulkerson(3, ECHO, x->getBroadcasterId(), selfId);
                 if (sourceEchoIsValidated) {
                     dolevDelivered[xId0] = true;
@@ -979,12 +918,8 @@ void Peer::BRACHADOLEV2receiveMessage_ECHO_ECHO(BriefPacket *x) {
     epath2.erase(epath2.begin());
     epath2.pop_back(); // remove selfId from path
 
-//    printGraphBRACHADOLEV2(ECHO, echoSender1);     // Write the graph to file
-//    bool echo1IsValidated = fPlus1DisjointPaths(echoSender1, ECHO);
     bool echo1IsValidated = fordFulkerson(4, ECHO, echoSender1, selfId);
 
-//    printGraphBRACHADOLEV2(ECHO, echoSender2);
-//    bool echo2IsValidated = fPlus1DisjointPaths(echoSender2, ECHO);
     bool echo2IsValidated = fordFulkerson(5, ECHO, echoSender2, selfId);
 
     // TODO: continue from here
@@ -1201,12 +1136,8 @@ void Peer::BRACHADOLEV2receiveMessage_READY_ECHO(BriefPacket *x) {
     epath.erase(epath.begin());
     epath.pop_back(); // remove selfId from path
 
-//    printGraphBRACHADOLEV2(READY, readySender);     // Write the graph to file
-//    bool readyIsValidated = fPlus1DisjointPaths(readySender, READY);
     bool readyIsValidated = fordFulkerson(6, READY, readySender, selfId);
 
-//    printGraphBRACHADOLEV2(ECHO, echoSender);
-//    bool echoIsValidated = fPlus1DisjointPaths(echoSender, ECHO);
     bool echoIsValidated = fordFulkerson(7, ECHO, echoSender, selfId);
 
     /////////////////////////////////////////////

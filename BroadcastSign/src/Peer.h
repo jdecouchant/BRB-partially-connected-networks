@@ -136,6 +136,7 @@ protected:
 
     // Dolev functions
 
+    virtual void sendTo_BRACHA(BriefPacket * bp, vector<int> ids);
     virtual void sendTo(BriefPacket * bp, vector<int> ids );
     virtual void receiveECHO_or_READY(BriefPacket *x);
     virtual void receiveStream(Packet *msg); // Receive from socket and call adequate receive function
@@ -250,7 +251,7 @@ protected:
     virtual void insertPathIntoGraph(pair<int, int> xId, vector<int> path);
     virtual bool checkIfEmptyPathReceivedFromOneProcessInPath(pair<int, int> xId, vector<int> path);
     virtual bool checkIfDolevDelivered(pair<int, int> xId);
-    virtual bool fPlus1DisjointPaths(int source, int msgType);
+//    virtual bool fPlus1DisjointPaths(int source, int msgType);
     virtual vector<int> getPathFromMessage(BriefPacket *x);
     virtual vector<int> getVectorFromInt(int id);
 
@@ -260,8 +261,6 @@ protected:
 
     virtual bool checkIfSubpathReceived(pair<int, int> xId, vector<int> path);
     virtual void insertPath(pair<int, int> xId, vector<int> path);
-
-    virtual void printGraphBRACHADOLEV2(int msgType, int senderId); // BRACHADOLEV
 
     virtual void BRACHADOLEV2receiveMessage(BriefPacket *x);
 

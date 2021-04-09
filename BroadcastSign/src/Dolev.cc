@@ -29,13 +29,13 @@ void Peer::DOLEVinitialize() {
     for (int i = 0; i < nodesNbr; i++) {
         gotEmptyPathSetFrom[i] = false;
     }
-    pathGraph = (bool ***) new bool*[nodesNbr]; // Depth
+    mapPathGraph = (bool ***) new bool*[nodesNbr]; // Depth
     for (int d = 0; d < nodesNbr; d++) {
-        pathGraph[d] = new bool*[nodesNbr];
+        mapPathGraph[d] = new bool*[nodesNbr];
         for (int i = 0; i < nodesNbr; i++) {
-            pathGraph[d][i] = new bool[nodesNbr];
+            mapPathGraph[d][i] = new bool[nodesNbr];
             for (int j = 0; j < nodesNbr; j++) {
-                pathGraph[d][i][j] = false;
+                mapPathGraph[d][i][j] = false;
             }
         }
     }
@@ -45,30 +45,30 @@ void Peer::DOLEVfinish() {
     delete[] gotEmptyPathSetFrom;
     for (int d = 0; d < nodesNbr; d++) {
         for (int i = 0; i < nodesNbr; i++) {
-            delete pathGraph[d][i];
+            delete mapPathGraph[d][i];
         }
-        delete pathGraph[d];
+        delete mapPathGraph[d];
     }
-    delete[] pathGraph;
+    delete[] mapPathGraph;
     cout << "Peer " << selfId << " sent " << this->numSentMsg << " msgs" << endl;
 }
 
 BriefPacket * Peer::DOLEVfirstMessage() {
     BriefPacket * bp = new BriefPacket();
-    bp->setSenderId(selfId);
+    bp->setLinkSenderId(selfId);
     bp->setBroadcasterId(selfId);
     bp->setMsgId(msgId);
 
     bp->setMsgType(ECHO);
     bp->setPathArraySize(0);
     for (int depth = 0; depth < nodesNbr; depth++) {
-        pathGraph[depth][selfId][selfId] = true;
+        mapPathGraph[depth][selfId][selfId] = true;
     }
     if (!delivered) {
         delivered = true;
         deliverCount++;
-        deliverTime.push_back(simTime().dbl() * 1000- roundDuration*1000);
-        cout << deliverCount << ": " << selfId << " [DOLEV] DELIVERS after " << simTime().dbl() * 1000 - roundDuration*1000 << "ms" <<  endl;
+        deliverTime.push_back(simTime().dbl() * 1000- startTime*1000);
+        cout << deliverCount << ": " << selfId << " [DOLEV] DELIVERS after " << simTime().dbl() * 1000 - startTime*1000 << "ms" <<  endl;
     }
     return bp;
 }
@@ -81,7 +81,7 @@ void Peer::printGraph() {
     for (int d = 0; d < nodesNbr; d++) {
         for (int i = 0; i < nodesNbr; i++) {
             for (int j = 0; j < nodesNbr; j++) {
-                gfile << ((pathGraph[d][i][j])?1:0) << " ";
+                gfile << ((mapPathGraph[d][i][j])?1:0) << " ";
             }
             gfile << endl;
         }
@@ -102,10 +102,10 @@ void Peer::DOLEVreceiveMessage(BriefPacket *x) {
     }
 
     if (x->getPathArraySize() == 0) { // Optim 2, 3 Bonomi
-        gotEmptyPathSetFrom[x->getSenderId()] = true;
+        gotEmptyPathSetFrom[x->getLinkSenderId()] = true;
     }
 
-    bool containsSelf = (x->getSenderId() == selfId); // Should not happen
+    bool containsSelf = (x->getLinkSenderId() == selfId); // Should not happen
     for (int i = 1; i < x->getPathArraySize(); i++) { // Important: otherwise the source never delivers
         if (x->getPath(i) == selfId) {
             containsSelf = true;
@@ -116,10 +116,10 @@ void Peer::DOLEVreceiveMessage(BriefPacket *x) {
     for (int i = 0; i < x->getPathArraySize(); i++) {
         path.push_back(x->getPath(i));
     }
-    path.push_back(x->getSenderId());
+    path.push_back(x->getLinkSenderId());
     path.push_back(selfId);
 
-    if (x->getSenderId() != x->getBroadcasterId() && x->getPathArraySize()==0) { // Optim 2 Bonomi
+    if (x->getLinkSenderId() != x->getBroadcasterId() && x->getPathArraySize()==0) { // Optim 2 Bonomi
         path.insert(path.begin(), x->getBroadcasterId());
     }
 
@@ -133,11 +133,11 @@ void Peer::DOLEVreceiveMessage(BriefPacket *x) {
     for (int i = 0; i < path.size()-1; i++) {
         int start = path[i];
         int next = path[i+1];
-        pathGraph[depth][start][next] = true;
+        mapPathGraph[depth][start][next] = true;
         depth++;
     }
     while (depth < nodesNbr) {
-        pathGraph[depth][selfId][selfId] = true;
+        mapPathGraph[depth][selfId][selfId] = true;
         depth++;
     }
 
@@ -169,8 +169,8 @@ void Peer::DOLEVreceiveMessage(BriefPacket *x) {
         if (!delivered) {
             delivered = true;
             deliverCount++;
-            deliverTime.push_back(simTime().dbl() * 1000- roundDuration*1000);
-            cout << deliverCount << ": " << selfId << " [DOLEV] DELIVERS after " << simTime().dbl() * 1000 - roundDuration*1000 << "ms" <<  endl;
+            deliverTime.push_back(simTime().dbl() * 1000- startTime*1000);
+            cout << deliverCount << ": " << selfId << " [DOLEV] DELIVERS after " << simTime().dbl() * 1000 - startTime*1000 << "ms" <<  endl;
             path.clear(); // Optim 2 Bonomi
         }
     }
@@ -204,7 +204,7 @@ void Peer::DOLEVreceiveMessage(BriefPacket *x) {
 
     if (diff.size() > 0) {
         BriefPacket * cp = new BriefPacket();
-        cp->setSenderId(selfId);
+        cp->setLinkSenderId(selfId);
         cp->setBroadcasterId(x->getBroadcasterId());
         cp->setMsgId(x->getMsgId());
         cp->setMsgType(ECHO);

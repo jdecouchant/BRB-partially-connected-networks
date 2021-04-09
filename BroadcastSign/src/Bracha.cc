@@ -32,7 +32,7 @@ void Peer::BRACHAfinish() {
 
 BriefPacket * Peer::BRACHAfirstMessage() {
     BriefPacket * bp = new BriefPacket();
-    bp->setSenderId(selfId);
+    bp->setLinkSenderId(selfId);
     bp->setBroadcasterId(selfId);
     bp->setMsgId(msgId);
     bp->setMsgType(ECHO);
@@ -51,7 +51,7 @@ void Peer::BRACHAreceiveMessage(BriefPacket *x) {
     }
 
     if (x->getMsgType() == ECHO) {
-        rcvECHO[x->getBroadcasterId()].insert(x->getSenderId());
+        rcvECHO[x->getBroadcasterId()].insert(x->getLinkSenderId());
         rcvECHO[x->getBroadcasterId()].insert(selfId);
         if (rcvECHO[x->getBroadcasterId()].size() >= quorumSize) {
             rcvREADY[x->getBroadcasterId()].insert(selfId);
@@ -59,13 +59,13 @@ void Peer::BRACHAreceiveMessage(BriefPacket *x) {
                 if (!delivered) {
                     delivered = true;
                     deliverCount++;
-                    deliverTime.push_back(simTime().dbl() * 1000- roundDuration*1000);
-                    cout << deliverCount << ": " << selfId << " [BRACHA] DELIVERS after " << simTime().dbl() * 1000 - roundDuration*1000 << "ms" <<  endl;
+                    deliverTime.push_back(simTime().dbl() * 1000- startTime*1000);
+                    cout << deliverCount << ": " << selfId << " [BRACHA] DELIVERS after " << simTime().dbl() * 1000 - startTime*1000 << "ms" <<  endl;
                 }
             }
         }
     } else if (x->getMsgType() == READY) {
-        rcvREADY[x->getBroadcasterId()].insert(x->getSenderId());
+        rcvREADY[x->getBroadcasterId()].insert(x->getLinkSenderId());
         if (rcvREADY[x->getBroadcasterId()].size() > f) {
             rcvREADY[x->getBroadcasterId()].insert(selfId);
         }
@@ -73,41 +73,42 @@ void Peer::BRACHAreceiveMessage(BriefPacket *x) {
             if (!delivered) {
                 delivered = true;
                 deliverCount++;
-                deliverTime.push_back(simTime().dbl() * 1000- roundDuration*1000);
-                cout << deliverCount << ": " << selfId << " [BRACHA] DELIVERS after " << simTime().dbl() * 1000 - roundDuration*1000 << "ms" <<  endl;
+                deliverTime.push_back(simTime().dbl() * 1000- startTime*1000);
+                cout << deliverCount << ": " << selfId << " [BRACHA] DELIVERS after " << simTime().dbl() * 1000 - startTime*1000 << "ms" <<  endl;
             }
         }
     }
-
-    //    cout << selfId << " has " << rcvECHO[x->getBroadcasterId()].size() << " echos, and "
-    //            << rcvREADY[x->getBroadcasterId()].size() << " readys" << endl;
 
     bool isReady = rcvREADY[x->getBroadcasterId()].size() > f || rcvECHO[x->getBroadcasterId()].size() >= quorumSize;
 
     if (!sentReady && isReady) {
         sentReady = true;
         BriefPacket * cp = new BriefPacket();
-        cp->setSenderId(selfId);
+        cp->setLinkSenderId(selfId);
         cp->setBroadcasterId(x->getBroadcasterId());
         cp->setMsgId(x->getMsgId());
         cp->setMsgType(READY);
         vector<int> allNodes;
         for (int i = 0; i < nodesNbr; i++) {
-            allNodes.push_back(i);
+            if (connections[selfId][i] == 1) { // Should be all nodes, but is here to prevent a crash with non-fully connected networks
+                allNodes.push_back(i);
+            }
         }
-        sendTo(cp, allNodes);
+        sendTo_BRACHA(cp, allNodes);
     } else if (!sentEcho) {
         sentEcho = true;
         BriefPacket * cp = new BriefPacket();
-        cp->setSenderId(selfId);
+        cp->setLinkSenderId(selfId);
         cp->setBroadcasterId(x->getBroadcasterId());
         cp->setMsgId(x->getMsgId());
         cp->setMsgType(ECHO);
         vector<int> allNodes;
         for (int i = 0; i < nodesNbr; i++) {
-            allNodes.push_back(i);
+            if (connections[selfId][i] == 1) { // Should be all nodes, but is here to prevent a crash with non-fully connected networks
+                allNodes.push_back(i);
+            }
         }
-        sendTo(cp, allNodes);
+        sendTo_BRACHA(cp, allNodes);
     }
 }
 

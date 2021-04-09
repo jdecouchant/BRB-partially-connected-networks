@@ -14,7 +14,6 @@
 #include <bits/stdc++.h>
 
 #include <stdio.h>
-//#include <python3.6/Python.h>
 #include <iostream>
 #include <fstream>
 
@@ -121,17 +120,6 @@ void Peer::BRACHADOLEVreceiveMessage(BriefPacket *x) {
     }
     path.push_back(selfId);
 
-//    cout << selfId << " received " << ((x->getMsgType()==ECHO)? "(E=": "(R=") << x->getBroadcasterId() << ") from " << x->getLinkSenderId() << " with path = [";
-//    for (int i = 0; i < x->getPathArraySize(); i++) {
-//        cout << x->getPath(i) << " ";
-//    }
-//    cout << "]" << endl;
-//    cout << "Assembled path = [";
-//    for (int i : path) {
-//        cout << i << " ";
-//    }
-//    cout << "]" << endl;
-
     if (mapPathGraph.find(make_pair(x->getMsgType(), x->getBroadcasterId())) == mapPathGraph.end()) {
         bool ***pathGraph = (bool ***) new bool*[nodesNbr]; // Depth
         for (int d = 0; d < nodesNbr; d++) {
@@ -151,12 +139,10 @@ void Peer::BRACHADOLEVreceiveMessage(BriefPacket *x) {
         int start = path[i];
         int next = path[i+1];
         mapPathGraph[make_pair(x->getMsgType(), x->getBroadcasterId())][depth][start][next] = true;
-        //        pathGraph[depth][start][next] = true;
         depth++;
     }
     while (depth < nodesNbr) {
         mapPathGraph[make_pair(x->getMsgType(), x->getBroadcasterId())][depth][selfId][selfId] = true;
-        //        pathGraph[depth][selfId][selfId] = true;
         depth++;
     }
 
