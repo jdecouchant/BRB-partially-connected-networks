@@ -1,5 +1,5 @@
-#ifndef __INET_MYUDPVIDEOSTREAMCLI_H
-#define __INET_MYUDPVIDEOSTREAMCLI_H
+#ifndef __INET_MYPEERCLI_H
+#define __INET_MYPEERCLI_H
 
 #include "inet/common/INETDefs.h"
 
@@ -24,19 +24,13 @@ using namespace std::chrono;
 
 namespace inet {
 
-/**
- * A "Realtime" VideoStream client application.
- *
- * Basic video stream application. Clients connect to server and get a stream of
- * video back.
- */
 class Peer : public ApplicationBase, public UdpSocket::ICallback {
 
 public:
     static map<L3Address, int> addrToId;
 
-    cMessage **processLinkTimers; // An array of timers, one per possible destination (instantiated only for the neighbors)
-    vector< pair<Packet *, SimTime> > *pendingMsgsPerNeighbors;
+    cMessage **processLinkTimers = nullptr; // An array of timers, one per possible destination (instantiated only for the neighbors)
+    vector< pair<Packet *, SimTime> > *pendingMsgsPerNeighbors = nullptr;
 
     static vector<SimTime> deliverTime;
     static int deliverCount;
@@ -62,7 +56,7 @@ protected:
 
     // state
     UdpSocket socket;
-    cMessage *roundEvent;
+    cMessage *roundEvent = nullptr;
     int localPort = -1;
 
     int nodesNbr;
@@ -77,7 +71,7 @@ protected:
 
     int quorumSize;
 
-    omnetpp::cTopology *topo;
+    omnetpp::cTopology *topo = nullptr;
 
     // Common
     bool delivered = false;
@@ -91,9 +85,9 @@ protected:
     int debugId = 0;
 
     bool delay = true;
-    std::chrono::_V2::system_clock::time_point timeMsgReception; // Set when a message is received
+    std::chrono::time_point<std::chrono::high_resolution_clock> timeMsgReception; // Set when a message is received
     std::default_random_engine generator;
-    std::normal_distribution<double> **distribution; //(5.0,2.0);
+    std::normal_distribution<double> **distribution = nullptr; //(5.0,2.0);
 
 private:
 
@@ -116,7 +110,7 @@ private:
 
 public:
     Peer() { }
-    virtual ~Peer() { cancelAndDelete(roundEvent); }
+    virtual ~Peer() { ApplicationBase::cancelAndDelete(roundEvent); }
 
 protected:
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
@@ -198,7 +192,7 @@ protected:
     virtual bool BRACHADOLEVreceiveMessage(BriefPacket *x); // true if message discarded
 #endif
 
-#ifdef BRACHACPA // Direct combination between Bracha and Dolev's algorithm
+#ifdef BRACHACPA // Direct combination between Bracha and CPA's algorithm
 protected:
     bool sentEcho = false;
     bool sentReady = false;
@@ -344,5 +338,5 @@ protected:
 
 } // namespace inet
 
-#endif // ifndef __INET_UDPVIDEOSTREAMCLI_H
+#endif
 

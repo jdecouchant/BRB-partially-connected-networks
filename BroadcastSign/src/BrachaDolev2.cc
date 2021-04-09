@@ -265,7 +265,10 @@ bool Peer::bfs(int V, int **rGraph, int s, int t, int * parent) {
 //    }
 
     // Create a visited array and mark all vertices as not visited
-    bool visited[V] = {false};
+    bool visited[V];
+    for(int i=0;i<V;++i) {
+        visited[i] = false;
+    }
 
     // Create a queue, enqueue source vertex and mark source vertex as visited
     queue <int> q;
@@ -677,7 +680,7 @@ void Peer::BRACHADOLEV2receiveMessage_ECHO(BriefPacket *x) {
         }
     }
     if (!sentEcho && isInEcho) {
-        if (OPTIM_BRACHA_OVERPROVISIONING && selfId > quorumSize + f - 1
+        if ( ((OPTIM_BRACHA_OVERPROVISIONING && selfId) > (quorumSize + f - 1))
                 || (OPTIM_SENDTOECHO && x->getEchoOrReadySender() == x->getBroadcasterId() && x->getLinkSenderId() == x->getBroadcasterId())) {
             doCreateECHO_ECHO = false;
         } else {

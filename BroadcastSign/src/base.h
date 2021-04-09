@@ -1,8 +1,6 @@
 #ifndef BASE_H
 #define BASE_H
 
-using namespace std;
-
 //const bool MAINTAIN_WITNESSED_BM = false;
 /*** Message types ***/
 //const int REQUEST = 8;
