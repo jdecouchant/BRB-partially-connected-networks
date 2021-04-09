@@ -149,12 +149,17 @@ protected:
 #ifdef DOLEV
 protected:
     bool *gotEmptyPathSetFrom;
-    bool ***pathGraph;
+    bool ***mapPathGraph;
 
     virtual void printGraph(); // DOLEV
 
     virtual void DOLEVinitialize();
     virtual void DOLEVfinish();
+
+//    virtual bool checkIfSubpathReceived(pair<int, int> xId, vector<int> path);
+    virtual bool bfs(int V, int **rGraph, int s, int t, int * parent);
+    int **rgraph;
+    virtual bool fordFulkerson(int debug, int s, int t);
 
     virtual BriefPacket * DOLEVfirstMessage();
     virtual void DOLEVreceiveMessage(BriefPacket *x);

@@ -14,7 +14,6 @@
 #include <bits/stdc++.h>
 
 #include <stdio.h>
-//#include <python3.6/Python.h>
 #include <iostream>
 #include <fstream>
 
@@ -38,6 +37,12 @@ void Peer::DOLEVinitialize() {
                 mapPathGraph[d][i][j] = false;
             }
         }
+    }
+
+    int V = nodesNbr*(nodesNbr+1);
+    rgraph = new int*[V];
+    for (int i = 0; i < V; i++) {
+        rgraph[i] = new int[V];
     }
 }
 
@@ -90,6 +95,110 @@ void Peer::printGraph() {
     gfile.close();
 }
 
+/* Returns true if there is a path from source 's' to sink 't' in
+  residual graph. Also fills parent[] to store the path */
+bool Peer::bfs(int V, int **rGraph, int s, int t, int * parent) {
+
+    // Create a visited array and mark all vertices as not visited
+    bool visited[V];
+    for(int i=0;i<V;++i) {
+        visited[i] = false;
+    }
+
+    // Create a queue, enqueue source vertex and mark source vertex as visited
+    queue <int> q;
+    q.push(s);
+    visited[s] = true;
+    parent[s] = -1;
+
+    while (!q.empty()) {     // Standard BFS Loop
+        int u = q.front();
+        q.pop();
+
+        for (int d = 0; d < nodesNbr; d++) {
+            //            cout << "depth = " << d << endl;
+            for (int i = 0; i < nodesNbr; i++) {
+                int v = nodesNbr*d+i;
+                if (visited[v]==false && rGraph[u][v] > 0) {
+                    //                cout << u << " " << v << " " << rGraph[u][v] << " Found neighbor " << v << endl; sleep(1);
+                    q.push(v);
+                    parent[v] = u;
+                    visited[v] = true;
+                }
+
+            }
+        }
+    }
+
+    return visited[t];    // If we reached sink in BFS starting from source, then return true, else false
+}
+
+bool Peer::fordFulkerson(int debug, int s, int ot) {
+
+    // If message directly received from its original broadcaster
+    if (s == ot || mapPathGraph[0][s][ot]) { // TODO: s == ot should not be necessary
+        return true;
+    }
+
+    int V = (nodesNbr+1)*nodesNbr;
+
+    for (int i = 0; i < V; i++) {
+        for (int j = 0; j < V; j++) {
+            rgraph[i][j] = 0;
+        }
+    }
+
+    for (int d = 0; d < nodesNbr; d++) {
+
+        int t = nodesNbr * d + ot;
+
+        // Copy graph into local matrix
+        for (int d = 0; d < nodesNbr; d++) {
+            for (int i = 0; i < nodesNbr; i++) {
+                for (int j = 0; j < nodesNbr; j++) {
+                    rgraph[d*nodesNbr + i][(d+1)*nodesNbr + j] = ((mapPathGraph[d][i][j])?1:0);
+                }
+            }
+        }
+
+        int parent[V];
+        int max_flow = 0;
+
+        // Augment the flow while there is path from source to sink
+        int iter = 0;
+        while (bfs(V, rgraph, s, t, parent)) {
+            // Find minimum residual capacity of the edges along the
+            // path filled by BFS. Or we can say find the maximum flow
+            // through the path found.
+            int path_flow = INT_MAX;
+            for (int v=t; v!=s; v=parent[v]) {
+                int u = parent[v];
+                //            cout << u << " " << v << " updating path flow with " << rgraph[u][v] << endl;
+                path_flow = min(path_flow, rgraph[u][v]);
+            }
+
+            // update residual capacities of the edges and reverse edges
+            // along the path
+            int u;
+            for (int v=t; v != s; v=parent[v]) {
+                u = parent[v];
+                rgraph[u][v] -= path_flow;
+                rgraph[v][u] += path_flow;
+            }
+
+            // Add path flow to overall flow
+            max_flow += path_flow;
+        }
+
+        // Return the overall flow
+        if (max_flow >= f+1) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void Peer::DOLEVreceiveMessage(BriefPacket *x) {
     if (delivered) { // Optim 5, Bonomi
         return;
@@ -123,12 +232,6 @@ void Peer::DOLEVreceiveMessage(BriefPacket *x) {
         path.insert(path.begin(), x->getBroadcasterId());
     }
 
-    //    cout << "\t" << selfId << " rcv path = ";
-    //    for (int i = 0; i < path.size(); i++) {
-    //        cout << path[i] << " ";
-    //    }
-    //    cout << endl;
-
     int depth = 0;
     for (int i = 0; i < path.size()-1; i++) {
         int start = path[i];
@@ -143,29 +246,8 @@ void Peer::DOLEVreceiveMessage(BriefPacket *x) {
 
     path.pop_back();
 
-    printGraph();
-
-    ofstream argfile;
-    argfile.open("/home/jeremie/sim/BroadcastSign/simulations/args.txt");
-    argfile << selfId << "\n";
-    argfile << f << "\n";
-    argfile.close();
-
-    PyObject* pInt;
-    Py_Initialize();
-
-    FILE * PythonScriptFile = fopen("/home/jeremie/sim/BroadcastSign/simulations/disjointPathsToSource.py", "r");
-    PyRun_SimpleFile(PythonScriptFile, "/home/jeremie/sim/BroadcastSign/simulations/disjointPathsToSource.py");
-    fclose(PythonScriptFile);
-
-    //    Py_Finalize(); // Should be executed only once!
-
-    ifstream resfile ("/home/jeremie/sim/BroadcastSign/simulations/res.txt");
-    int res;
-    resfile >> res;
-    //    cout << "\tres = " << res << endl;
-
-    if (res == 1) {
+    bool msgIsValidated = fordFulkerson(0, x->getBroadcasterId(), selfId);
+    if (msgIsValidated) {
         if (!delivered) {
             delivered = true;
             deliverCount++;
@@ -174,8 +256,6 @@ void Peer::DOLEVreceiveMessage(BriefPacket *x) {
             path.clear(); // Optim 2 Bonomi
         }
     }
-    resfile.close();
-
 
     if (containsSelf) return;
 
@@ -212,16 +292,6 @@ void Peer::DOLEVreceiveMessage(BriefPacket *x) {
         for (int i = 0; i < path.size(); i++) {
             cp->setPath(i, path[i]);
         }
-        //        cout << "\t" << selfId << " sending path = [";
-        //        for (int i = 0; i < path.size(); i++) {
-        //            cout << path[i] << " ";
-        //        }
-        //        cout << "]";
-        //        std::string str(diff.begin(), diff.end());
-        //        cout << "to [";
-        //        for (int i : diff) cout << " " << i;
-        //        cout << " ]";
-        //        cout << endl;
         sendTo(cp, diff);
     }
 }

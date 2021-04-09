@@ -37,6 +37,12 @@ void Peer::BRACHADOLEV2initialize() {
     OPTIM_PAYLOAD_AVOID_IF_RECEIVED = par("OPTIM_PAYLOAD_AVOID_IF_RECEIVED");
     OPTIM_SEND_2f1 = par("OPTIM_SEND_2f1");
     ASYNC = par("ASYNC");
+
+    int V = nodesNbr*(nodesNbr+1);
+    rgraph = new int*[V];
+    for (int i = 0; i < V; i++) {
+        rgraph[i] = new int[V];
+    }
 }
 
 void Peer::BRACHADOLEV2finish() {

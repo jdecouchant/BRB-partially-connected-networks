@@ -14,7 +14,6 @@
 #include <bits/stdc++.h>
 
 #include <stdio.h>
-//#include <python3.6/Python.h>
 #include <iostream>
 #include <fstream>
 
@@ -170,14 +169,6 @@ void Peer::initialize(int stage) {
         if (tmp % 2 == 1)
             tmp++;
         quorumSize = tmp/2;
-
-#ifdef BRACHADOLEV2
-        int V = nodesNbr*(nodesNbr+1);
-        rgraph = new int*[V];
-        for (int i = 0; i < V; i++) {
-            rgraph[i] = new int[V];
-        }
-#endif
 
     }
 }
