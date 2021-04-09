@@ -208,7 +208,6 @@ void Peer::insertPathIntoGraph(pair<int, int> xId, vector<int> path) {
         mapPathGraph[xId][depth][selfId][selfId] = true;
         depth++;
     }
-//    path.pop_back();
 }
 
 bool Peer::checkIfEmptyPathReceivedFromOneProcessInPath(pair<int, int> xId, vector<int> path) {
@@ -241,13 +240,6 @@ bool Peer::checkIfDolevDelivered(pair<int, int> xId) {
 /* Returns true if there is a path from source 's' to sink 't' in
   residual graph. Also fills parent[] to store the path */
 bool Peer::bfs(int V, int **rGraph, int s, int t, int * parent) {
-//    cout << "bfs with arguments " << "s=" << s << ", t=" << t << endl;
-//    for (int i=0; i<V; i++) {
-//        for (int j=0; j<V; j++) {
-//            cout << rGraph[i][j] << " ";
-//        }
-//        cout << endl;
-//    }
 
     // Create a visited array and mark all vertices as not visited
     bool visited[V];
@@ -261,7 +253,6 @@ bool Peer::bfs(int V, int **rGraph, int s, int t, int * parent) {
     visited[s] = true;
     parent[s] = -1;
 
-//    cout << "before depiling" << endl;
     while (!q.empty()) {     // Standard BFS Loop
         int u = q.front();
         q.pop();
@@ -280,17 +271,6 @@ bool Peer::bfs(int V, int **rGraph, int s, int t, int * parent) {
             }
         }
     }
-//    for (int v=0; v<V; v++) {
-//        if (visited[v]==false && rGraph[u][v] > 0) {
-//            //                cout << u << " " << v << " " << rGraph[u][v] << " Found neighbor " << v << endl; sleep(1);
-//            q.push(v);
-//            parent[v] = u;
-//            visited[v] = true;
-//        }
-//    }
-//    }
-
-//    cout << "before returning value " << visited[t] << endl;
 
     return visited[t];    // If we reached sink in BFS starting from source, then return true, else false
 }
@@ -361,40 +341,6 @@ bool Peer::fordFulkerson(int debug, int msgType, int s, int ot) {
     return false;
 }
 
-//bool Peer::fPlus1DisjointPaths(int source, int msgType) {
-//    return true;
-    //// Search for f+1 disjoint paths between the echoOrReadySender and the local process using a Python script
-//    ofstream argfile;
-////    argfile.open("/home/jeremie/sim/BroadcastSign/simulations/args.txt");
-//    argfile.open(outputPrefix + ".args");
-//    argfile << selfId << "\n";
-//    argfile << f << "\n";
-//    argfile << source << "\n"; // ?Changed?
-//    argfile << msgType << "\n";
-//    argfile.close();
-//
-//    PyObject* pInt;
-//    Py_Initialize();
-//
-//    //string cmd = "/home/jeremie/sim/BroadcastSign/simulations/stats/"+to_string(nodesNbr)+"_"+to_string(k)+"_"+to_string(f)+".py";
-//    string cmd = outputPrefix + ".py";
-//    //cout << "name of the disjoint path python script " << cmd << endl;
-//    FILE * PythonScriptFile = fopen(cmd.c_str(), "r");
-//    PyRun_SimpleFile(PythonScriptFile, cmd.c_str());
-//    fclose(PythonScriptFile);
-//    //    PyRun_SimpleString("print('Hello World from Embedded Python!!!')");
-//
-//    //    Py_Finalize(); // Should be executed only once!
-//
-////    ifstream resfile ("/home/jeremie/sim/BroadcastSign/simulations/res.txt");
-//    //cout << "after the python script has been called" << endl;
-//    ifstream resfile (outputPrefix + ".res");
-//    int res;
-//    resfile >> res;
-//    resfile.close();
-//    return (res == 1);
-//}
-
 vector<int> Peer::getPathFromMessage(BriefPacket *x) {
 
     vector<int> path;
@@ -406,17 +352,6 @@ vector<int> Peer::getPathFromMessage(BriefPacket *x) {
         path.push_back(x->getLinkSenderId());
     }
     path.push_back(selfId);
-
-//    cout << selfId << " received " << ((x->getMsgType()==ECHO)? "(E=": "(R=") << x->getEchoOrReadySender() << ") from " << x->getLinkSenderId() << " with path = [";
-//    for (int i = 0; i < x->getPathArraySize(); i++) {
-//        cout << x->getPath(i) << " ";
-//    }
-//    cout << "]" << endl;
-//    cout << "Assembled path = [";
-//    for (int i : path) {
-//        cout << i << " ";
-//    }
-//    cout << "]" << endl;
 
     return path;
 }
@@ -440,15 +375,6 @@ bool Peer::checkIfSubpathReceived(pair<int, int> xId, vector<int> path) {
                 }
             }
             if (isSubset) {
-//                if (xId.first == ECHO) {
-//                    cout << "ECHO: ";
-//                } else if (xId.first == READY) {
-//                    cout << "READY: ";
-//                } else if (xId.first == READY_ECHO) {
-//                    cout << "READY_ECHO: ";
-//                }
-//                cout << " Received : " << pathbitset.to_string() << endl;
-//                cout << " Had previously : " << b.to_string() << endl;
                 return true;
             }
         }

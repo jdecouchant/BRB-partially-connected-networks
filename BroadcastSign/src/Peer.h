@@ -156,7 +156,6 @@ protected:
     virtual void DOLEVinitialize();
     virtual void DOLEVfinish();
 
-//    virtual bool checkIfSubpathReceived(pair<int, int> xId, vector<int> path);
     virtual bool bfs(int V, int **rGraph, int s, int t, int * parent);
     int **rgraph;
     virtual bool fordFulkerson(int debug, int s, int t);
@@ -194,8 +193,12 @@ protected:
 
     virtual BriefPacket * BRACHADOLEVfirstMessage();
 
-    virtual void printGraphBrachaDolev(int msgType, int senderId); // BRACHADOLEV
-    virtual bool BRACHADOLEVreceiveMessage(BriefPacket *x); // true if message discarded
+    virtual bool bfs(int V, int **rGraph, int s, int t, int * parent);
+    int **rgraph;
+    virtual bool fordFulkerson(int debug, int msgType, int s, int t);
+
+//    virtual void printGraphBrachaDolev(int msgType, int senderId); // BRACHADOLEV
+    virtual void BRACHADOLEVreceiveMessage(BriefPacket *x); // true if message discarded
 #endif
 
 #ifdef BRACHACPA // Direct combination between Bracha and CPA's algorithm

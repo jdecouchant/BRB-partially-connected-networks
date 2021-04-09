@@ -28,12 +28,18 @@ void Peer::BRACHADOLEVinitialize() {
     for (int i = 0; i < nodesNbr; i++) {
         rcvMsgFrom[i] = false;
     }
+
+    int V = nodesNbr*(nodesNbr+1);
+    rgraph = new int*[V];
+    for (int i = 0; i < V; i++) {
+        rgraph[i] = new int[V];
+    }
 }
 
 void Peer::BRACHADOLEVfinish() {
     numMsgTotal += this->numSentMsg;
-    cout << "Peer " << selfId << " sent " << this->numSentMsg << " msgs and " << this->numBytesSent << " B (msgId+payload = " << (msgSize+PROCESS_ID_SIZE+MSG_ID_SIZE) << " B) "
-            << numBytesSent/(msgSize+PROCESS_ID_SIZE+MSG_ID_SIZE) << "X" <<  endl;
+    cout << "Peer " << selfId << " sent " << this->numSentMsg << " msgs and " << this->numBitsSent << " B (msgId+payload = " << (PAYLOAD_SIZE+PROCESS_ID_SIZE+PAYLOAD_ID_SIZE) << " B) "
+            << numBitsSent/(PAYLOAD_SIZE+PROCESS_ID_SIZE+MSG_ID_SIZE) << "X" <<  endl;
     if (selfId == nodesNbr-1) {
         cout << "Total number of messages: " << numMsgTotal << endl;
     }
@@ -47,7 +53,7 @@ BriefPacket * Peer::BRACHADOLEVfirstMessage() {
     bp->setMsgId(msgId);
     bp->setPathArraySize(0);
 
-    bp->setChunkLength(B(MSG_TYPE_SIZE + PROCESS_ID_SIZE + MSG_ID_SIZE + PATH_SIZE + msgSize));
+    bp->setChunkLength(B(MSG_TYPE_SIZE + PROCESS_ID_SIZE + MSG_ID_SIZE + PATH_LENGTH_SIZE + PAYLOAD_SIZE));
 
     bp->setLinkSenderId(selfId);
 
@@ -57,22 +63,105 @@ BriefPacket * Peer::BRACHADOLEVfirstMessage() {
     return bp;
 }
 
-void Peer::printGraphBrachaDolev(int msgType, int senderId) {
-    ofstream gfile;
-    string gfname;
-    gfname = "/home/jeremie/sim/BroadcastSign/simulations/graph_"+to_string(msgType)+"_"+to_string(senderId)+"_"+to_string(selfId)+".txt";
-    gfile.open(gfname);
-    gfile << nodesNbr << endl << endl;
-    for (int d = 0; d < nodesNbr; d++) {
-        for (int i = 0; i < nodesNbr; i++) {
-            for (int j = 0; j < nodesNbr; j++) {
-                gfile << ((mapPathGraph[make_pair(msgType, senderId)][d][i][j])?1:0) << " ";
-            }
-            gfile << endl;
-        }
-        gfile << endl;
+/* Returns true if there is a path from source 's' to sink 't' in
+  residual graph. Also fills parent[] to store the path */
+bool Peer::bfs(int V, int **rGraph, int s, int t, int * parent) {
+
+    // Create a visited array and mark all vertices as not visited
+    bool visited[V];
+    for(int i=0;i<V;++i) {
+        visited[i] = false;
     }
-    gfile.close();
+
+    // Create a queue, enqueue source vertex and mark source vertex as visited
+    queue <int> q;
+    q.push(s);
+    visited[s] = true;
+    parent[s] = -1;
+
+    while (!q.empty()) {     // Standard BFS Loop
+        int u = q.front();
+        q.pop();
+
+        for (int d = 0; d < nodesNbr; d++) {
+            for (int i = 0; i < nodesNbr; i++) {
+                int v = nodesNbr*d+i;
+                if (visited[v]==false && rGraph[u][v] > 0) {
+                    q.push(v);
+                    parent[v] = u;
+                    visited[v] = true;
+                }
+
+            }
+        }
+    }
+
+    return visited[t];    // If we reached sink in BFS starting from source, then return true, else false
+}
+
+bool Peer::fordFulkerson(int debug, int msgType, int s, int ot) {
+
+    // If message directly received from its original broadcaster
+    if (s == ot || mapPathGraph[make_pair(msgType, s)][0][s][ot]) { // TODO: s == ot should not be necessary
+        return true;
+    }
+
+    int V = (nodesNbr+1)*nodesNbr;
+
+    for (int i = 0; i < V; i++) {
+        for (int j = 0; j < V; j++) {
+            rgraph[i][j] = 0;
+        }
+    }
+
+    for (int d = 0; d < nodesNbr; d++) {
+
+        int t = nodesNbr * d + ot;
+
+        // Copy graph into local matrix
+        for (int d = 0; d < nodesNbr; d++) {
+            for (int i = 0; i < nodesNbr; i++) {
+                for (int j = 0; j < nodesNbr; j++) {
+                    rgraph[d*nodesNbr + i][(d+1)*nodesNbr + j] = ((mapPathGraph[make_pair(msgType, s)][d][i][j])?1:0);
+                }
+            }
+        }
+
+        int parent[V];
+        int max_flow = 0;
+
+        // Augment the flow while there is path from source to sink
+        int iter = 0;
+        while (bfs(V, rgraph, s, t, parent)) {
+            // Find minimum residual capacity of the edges along the
+            // path filled by BFS. Or we can say find the maximum flow
+            // through the path found.
+            int path_flow = INT_MAX;
+            for (int v=t; v!=s; v=parent[v]) {
+                int u = parent[v];
+                path_flow = min(path_flow, rgraph[u][v]);
+            }
+
+            // update residual capacities of the edges and reverse edges
+            // along the path
+            int u;
+            for (int v=t; v != s; v=parent[v]) {
+                u = parent[v];
+                rgraph[u][v] -= path_flow;
+                rgraph[v][u] += path_flow;
+            }
+
+            // Add path flow to overall flow
+            max_flow += path_flow;
+        }
+
+        // Return the overall flow
+        if (max_flow >= f+1) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void Peer::BRACHADOLEVreceiveMessage(BriefPacket *x) {
@@ -101,7 +190,6 @@ void Peer::BRACHADOLEVreceiveMessage(BriefPacket *x) {
         gotEmptyPathSetFrom[make_pair(x->getMsgType(), x->getBroadcasterId())][x->getLinkSenderId()] = true;
     }
 
-    //    cout << "[BRACHADOLEV] " << selfId << " rcvd (" << ((x->getMsgType()==ECHO)?"ECHO":"READY") << ", " << x->getBroadcasterId() << ") from " << x->getLinkSenderId() << endl;
     bool containsSelf = (x->getLinkSenderId() == selfId); // Should not happen
     for (int i = 1; i < x->getPathArraySize(); i++) { // Important: otherwise the source never delivers
         if (x->getPath(i) == selfId) {
@@ -146,31 +234,7 @@ void Peer::BRACHADOLEVreceiveMessage(BriefPacket *x) {
         depth++;
     }
 
-    printGraphBrachaDolev(x->getMsgType(), x->getBroadcasterId());
-
-    ofstream argfile;
-    argfile.open("/home/jeremie/sim/BroadcastSign/simulations/args.txt");
-    argfile << selfId << "\n";
-    argfile << f << "\n";
-    argfile << x->getBroadcasterId() << "\n"; // ?Changed?
-    argfile << x->getMsgType() << "\n";
-    argfile.close();
-
-    PyObject* pInt;
-    Py_Initialize();
-
-    FILE * PythonScriptFile = fopen("/home/jeremie/sim/BroadcastSign/simulations/disjointPaths.py", "r");
-    PyRun_SimpleFile(PythonScriptFile, "/home/jeremie/sim/BroadcastSign/simulations/disjointPaths.py");
-    fclose(PythonScriptFile);
-    //    PyRun_SimpleString("print('Hello World from Embedded Python!!!')");
-
-    //    Py_Finalize(); // Should be executed only once!
-
-    ifstream resfile ("/home/jeremie/sim/BroadcastSign/simulations/res.txt");
-    int res;
-    resfile >> res;
-    resfile.close();
-    //    cout << "\tThe result is " << res << endl;
+    bool msgIsValidated = fordFulkerson(0, x->getMsgType(), x->getBroadcasterId(), selfId);
 
     path.erase(path.begin());
     path.pop_back(); // remove selfId
@@ -212,12 +276,12 @@ void Peer::BRACHADOLEVreceiveMessage(BriefPacket *x) {
             }
             // The send message does not contain a senderId field
             cp->setChunkLength(B(MSG_TYPE_SIZE + PROCESS_ID_SIZE + MSG_ID_SIZE + ((x->getBroadcasterId() == x->getLinkSenderId())? 0: PROCESS_ID_SIZE) +
-                    PATH_SIZE + PROCESS_ID_SIZE * cp->getPathArraySize() + msgSize));
+                    PATH_LENGTH_SIZE + PROCESS_ID_SIZE * cp->getPathArraySize() + PAYLOAD_SIZE));
             sendTo(cp, diff);
         }
     }
 
-    if (res == 1) {
+    if (msgIsValidated) {
         dolevDelivered[make_pair(x->getMsgType(), x->getBroadcasterId())] = true; // Optim 2 Bonomi
         path.clear();
 
@@ -231,8 +295,8 @@ void Peer::BRACHADOLEVreceiveMessage(BriefPacket *x) {
                     if (!delivered) {
                         delivered = true;
                         deliverCount++;
-                        deliverTime.push_back(simTime().dbl() * 1000- roundDuration*1000);
-                        cout << deliverCount << ": " << selfId << " [BRACHADOLEV] DELIVERS after " << simTime().dbl() * 1000 - roundDuration*1000 << "ms" <<  endl;
+                        deliverTime.push_back(simTime().dbl() * 1000- startTime*1000);
+                        cout << deliverCount << ": " << selfId << " [BRACHADOLEV] DELIVERS after " << simTime().dbl() * 1000 - startTime*1000 << "ms" <<  endl;
                     }
                 }
             }
@@ -246,8 +310,8 @@ void Peer::BRACHADOLEVreceiveMessage(BriefPacket *x) {
                 if (!delivered) {
                     delivered = true;
                     deliverCount++;
-                    deliverTime.push_back(simTime().dbl() * 1000- roundDuration*1000);
-                    cout << deliverCount << ": " << selfId << " [BRACHADOLEV] DELIVERS after " << simTime().dbl() * 1000 - roundDuration*1000 << "ms" <<  endl;
+                    deliverTime.push_back(simTime().dbl() * 1000- startTime*1000);
+                    cout << deliverCount << ": " << selfId << " [BRACHADOLEV] DELIVERS after " << simTime().dbl() * 1000 - startTime*1000 << "ms" <<  endl;
                 }
             }
         }
@@ -272,7 +336,7 @@ void Peer::BRACHADOLEVreceiveMessage(BriefPacket *x) {
                 }
             }
 
-            cp->setChunkLength(B(MSG_TYPE_SIZE + PROCESS_ID_SIZE + MSG_ID_SIZE + PATH_SIZE + PROCESS_ID_SIZE * cp->getPathArraySize() + msgSize));
+            cp->setChunkLength(B(MSG_TYPE_SIZE + PROCESS_ID_SIZE + MSG_ID_SIZE + PATH_LENGTH_SIZE + PROCESS_ID_SIZE * cp->getPathArraySize() + PAYLOAD_SIZE));
             sendTo(cp, neighbors);
         } else if (!sentEcho && isEcho) {
             sentEcho = true;
@@ -289,7 +353,7 @@ void Peer::BRACHADOLEVreceiveMessage(BriefPacket *x) {
                 }
             }
 
-            cp->setChunkLength(B(MSG_TYPE_SIZE + PROCESS_ID_SIZE + MSG_ID_SIZE + PATH_SIZE + PROCESS_ID_SIZE * cp->getPathArraySize() + msgSize));
+            cp->setChunkLength(B(MSG_TYPE_SIZE + PROCESS_ID_SIZE + MSG_ID_SIZE + PATH_LENGTH_SIZE + PROCESS_ID_SIZE * cp->getPathArraySize() + PAYLOAD_SIZE));
             sendTo(cp, neighbors);
         }
     }
