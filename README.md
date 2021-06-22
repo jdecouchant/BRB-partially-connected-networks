@@ -1,6 +1,6 @@
 # BRB-partially-connected-networks
 
-This repository contains the Omnet++ code for the ICDCS'21 paper titled *Practical Byzantine Reliable Broadcast on Partially-Connected Networks*.
+This repository contains the Omnet++ code for the ICDCS'21 paper *Practical Byzantine Reliable Broadcast on Partially-Connected Networks*.
 The code used to generate K-pasted and K-diamond graphs comes from [BFT-ReliableCommunication](https://github.com/giovannifarina/BFT-ReliableCommunication)
 
 You can cite this work using the following bibtex entry: 
