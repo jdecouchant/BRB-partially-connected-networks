@@ -19,7 +19,27 @@ You can cite this work using the following bibtex entry:
 
 The following installation guide for the C++ code has been tested on Ubuntu 20.04.
 
-TODO
+First, let's compile salticidae: 
+
+	cd code3/salticidae/
+	cmake . 
+	make clean; make
+	cp libsalticidae.a lib/
+	cd ..
+
+Then, compile the main code: 
+	
+	make
+	
+To run a simple experiment (without Docker containers): 
+	
+	python3 test.py
+	
+To run a simple experiment with Docker containers: 
+	
+	python3 testDockerLocal.py
+	
+There are additional scripts and files in the code3 folder, which will eventually be cleaned/removed. 
 
 # Omnet++ - BRB-partially-connected-networks
 
