@@ -33,7 +33,7 @@ sshOpt2  = "ConnectTimeout=10"
 topofilename  = 'topology.txt'
 
 
-numServers = 50
+numServers = 10
 numFaulty = 1
 connectivity = 3
 
@@ -42,7 +42,7 @@ numBcasts = 10# 00 # total num of broadcast per node
 sleepTime = 5000000; # delay between 2 broadcasts in microsec
 minBidMeasure = 0; # lowest broadcast id considered for stats PER NODE
 maxBidMeasure = 500; # higher bound broadcast id for stats
-experimentTime = 120 # in seconds
+experimentTime = 60 # in seconds
 writingIntervals = 1
 
 resultsfilename = 'fig4.txt'

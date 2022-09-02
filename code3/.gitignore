@@ -1,0 +1,5 @@
+log/*
+addresses
+topology.txt
+App/*.o
+server

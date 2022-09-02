@@ -34,24 +34,30 @@ sshOpt2  = "ConnectTimeout=10"
 topofilename  = 'topology.txt'
 
 
-numServers = 31
+numServers = 6
 numFaulty = 1
 connectivity = 4
 
 payloadSize = 10 # in Bytes
 numBcasts = 10 # total num of broadcast per node
-sleepTime = 10000000; # delay between 2 broadcasts in microsec
+sleepTime = 1000000; # delay between 2 broadcasts in microsec
 minBidMeasure = 0; # lowest broadcast id considered for stats PER NODE
 maxBidMeasure = 500; # higher bound broadcast id for stats
-experimentTime = 240 # in seconds
+experimentTime = 60 # in seconds
 writingIntervals = 1
 
 resultsfilename = 'fig4.txt'
 
 # 1 - Dolev, 2 - Bracha-Dolev, 3 - Opt Bracha-Dolev, 4 - Bracha-CPA, 5 - Opt Bracha-CPA
-choice = 1
+choice = 3
 
 doPrintGraph = True
+
+MOD1 = True
+MOD2 = True
+MOD3 = True
+MOD4 = True
+MOD5 = True
 
 MBD_1 = True # Associate payload to ID to avoid resending + delete echo or ready sender with single hop
 MBD_2 = True # Single-hop Send msgs // PB with this option
@@ -151,7 +157,7 @@ def runExperiment():
                 s = subprocess.Popen(["ssh","-i",pem,"-o",sshOpt1,"-ntt",sshAdr,cmd])
         else:
             #print(str(i), topofilename, str(payloadSize), str(choice), str(numBcasts), str(sleepTime), str(minBidMeasure), str(maxBidMeasure), str(MBD_1), str(MBD_2), str(MBD_3), str(MBD_4), str(MBD_5), str(MBD_6), str(MBD_7), str(MBD_8), str(MBD_9), str(MBD_10), str(MBD_11), str(MBD_12), str(writingIntervals))
-            s = subprocess.Popen(["./server", str(i), topofilename, str(payloadSize), str(choice), str(numBcasts), str(sleepTime), str(minBidMeasure), str(maxBidMeasure), str(MBD_1), str(MBD_2), str(MBD_3), str(MBD_4), str(MBD_5), str(MBD_6), str(MBD_7), str(MBD_8), str(MBD_9), str(MBD_10), str(MBD_11), str(MBD_12), str(writingIntervals)])
+            s = subprocess.Popen(["./server", str(i), topofilename, str(payloadSize), str(MOD1), str(MOD2), str(MOD3), str(MOD4), str(MOD5), str(choice), str(numBcasts), str(sleepTime), str(minBidMeasure), str(maxBidMeasure), str(MBD_1), str(MBD_2), str(MBD_3), str(MBD_4), str(MBD_5), str(MBD_6), str(MBD_7), str(MBD_8), str(MBD_9), str(MBD_10), str(MBD_11), str(MBD_12), str(writingIntervals)])
         list_proc.append(s)
 
     time.sleep(experimentTime) # sleeping time in seconds
