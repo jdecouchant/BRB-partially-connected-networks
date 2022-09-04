@@ -39,7 +39,16 @@ To run a simple experiment with Docker containers:
 	
 	python3 testDockerLocal.py
 	
+You might want not to see some traces from Salticidae. To do so, edit the CMakeCache.txt file in /salticidae/ and change some lines as follows:
+
+	SALTICIDAE_NORMAL_LOG:BOOL=OFF
+	SALTICIDAE_DEBUG_LOG:BOOL=OFF
+
 There are additional scripts and files in the code3 folder, which will eventually be cleaned/removed. 
+
+
+
+
 
 # Omnet++ - BRB-partially-connected-networks
 
